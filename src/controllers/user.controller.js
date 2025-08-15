@@ -229,9 +229,226 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 })
 
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+    const {oldPassword, newPassword} = req.body
+
+    const user = await User.findById(req.user?._id)
+
+    const isPasswordCorrect = user.isPasswordCorrect(oldPassword)
+
+    if (!isPasswordCorrect) {
+        throw new ApiError(400, "Invalid Old Password")
+    }
+
+    user.password = newPassword
+    await user.save({validateBeforeSave: false})
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        {},
+        "Password Changed Successfully"
+    ))
+})
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+    const user = req.user
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        {user},
+        "Current User Fetched Successfully"
+    ))
+})
+
+// why we use async in side the callback function because their can be the need of await
+const updateAccountDetailes = asyncHandler(async (req, res) => {
+    const {email, fullname} = req.body
+
+    if (!email || !fullname) {
+        throw new ApiError(400, "email and fullname is required")
+    }
+
+    const user = User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                email,
+                fullname // fullname: fullname
+            }
+        },
+        {new: true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        {user},
+        "Account details updated successfully"
+    ))
+})
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    const avatarLocalPath = req.file?.path
+
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is missing")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if (!avatar.url) {
+        throw new ApiError(200, "Avatar url not found")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar: avatar.url
+            }
+        },
+        {new: true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        user,
+        "Avatar updated successfully"
+    ))
+})
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+
+    const coverImageLocalPath = req.file?.path
+
+    if (!coverImageLocalPath.url) {
+        throw new ApiError(400, "CoverImage is missing")
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    if (!coverImage.url) {
+        throw new ApiError(200, "coverImage url not found")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                coverImage : coverImage.url
+            }
+        },
+        {
+            new: true
+        }
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        user,
+        "coverImage updated successfully"
+    ))
+})
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+
+    const username = req.params
+
+    if (!username?.trim()) {
+        throw new ApiError(400, "Username is missing")
+    }
+
+    const channel = await User.aggregate([
+        {
+            // filter the user that required from the document return only one document
+            $match: {
+                username: username?.toLowerCase()
+            }
+        },
+        {
+            // join the two model based on conditions 
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",    
+                as: "subscribers"
+            }
+        },
+        {
+            // join the two model based on conditions 
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            // used to add new field in the databse
+            $addFields: {
+                subscribersCount: {
+                    $size: "$subscribers"
+                },
+                channelSubscribedCount: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: {$in: [req.user?._id, "$subscribers.subscribe"]},
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            // only return required field
+            $project: {
+                username: 1,
+                fullname: 1,
+                subscribersCount: 1,
+                channelSubscribedCount: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1
+            }
+        }
+    ])
+    
+    console.log(channel)
+
+    if (!channel?.length) {
+        throw new ApiError(404, "channel does not exist")
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        channel[0],
+        "User channel fetched successfully"
+    ))
+})
+
+
 export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetailes,
+    updateUserAvatar,
+    updateUserCoverImage,
+    getUserChannelProfile
 }
