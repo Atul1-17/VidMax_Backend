@@ -198,7 +198,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 
     try {
-        const decodedToken = jwt.verify(refreshAccessToken, process.env.REFRESH_TOKEN_SECRET)
+        const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
     
         const user = await User.findById(decodedToken?._id) 
     
@@ -255,6 +255,10 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
 const getCurrentUser = asyncHandler(async (req, res) => {
     const user = req.user
+
+    if (!user) {
+        throw new ApiError(404, "User not found")
+    }
     return res
     .status(200)
     .json(new ApiResponse(
@@ -272,7 +276,7 @@ const updateAccountDetailes = asyncHandler(async (req, res) => {
         throw new ApiError(400, "email and fullname is required")
     }
 
-    const user = User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
@@ -287,7 +291,7 @@ const updateAccountDetailes = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(
         200,
-        {user},
+        user,
         "Account details updated successfully"
     ))
 })
@@ -328,7 +332,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
     const coverImageLocalPath = req.file?.path
 
-    if (!coverImageLocalPath.url) {
+    if (!coverImageLocalPath) {
         throw new ApiError(400, "CoverImage is missing")
     }
 
@@ -361,7 +365,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
 
-    const username = req.params
+    const {username} = req.params
 
     if (!username?.trim()) {
         throw new ApiError(400, "Username is missing")
@@ -425,7 +429,6 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         }
     ])
     
-    console.log(channel)
 
     if (!channel?.length) {
         throw new ApiError(404, "channel does not exist")
