@@ -64,7 +64,8 @@ const publishVideo = asyncHandler(async (req, res) => {
         thumbnail: thumbnailUpload.url,
         duration: (videoUpload.duration != null ? String(videoUpload.duration) : "0"),
         isPublic,
-        publicId: videoUpload.public_id,
+        videoPublicId: videoUpload.public_id,
+        thumbnailPublicId: thumbnailUpload.public_id,
         owner: ownerId,
     })
 
@@ -94,7 +95,8 @@ const deleteVideo = asyncHandler(async (req, res) => {
         throw new ApiError(403, "Forbidden: You do not own this video")
     }
 
-    await deleteFromCloudinary(video.publicId)
+    await deleteFromCloudinary(video.videoPublicId, "video")
+    await deleteFromCloudinary(video.thumbnailPublicId, "image")
     await Video.findByIdAndDelete(videoId)
 
     return res
@@ -105,10 +107,131 @@ const deleteVideo = asyncHandler(async (req, res) => {
     ))
     
 
+});
+
+const updateVideo = asyncHandler(async (req, res) => {
+    const { updateId } = req.params
+    const {title, description} = req.body
+
+    //TODO: update video details like title, description, thumbnail
+
+    // if ([title, description].some((field) => typeof field !== "string" || field.trim() === "")) {
+    //     throw new ApiError(400, "Title and description are required")
+    // }
+    const video = await Video.findById(updateId)
+
+    if (!video) {
+        throw new ApiError(404, "Video not found")
+    }
+
+
+    if (req.user._id.toString() !== video.owner.toString()) {
+        throw new ApiError(403, "You do not have permission to update this video")
+    }
+
+    let updatedFields = {}
+    if (title && title.trim() !== "") {
+        updatedFields.title = title;
+    }
+
+    if (description && description !== "") {
+        updatedFields.description = description;
+    }
+
+    const thumbnailPublicId = video.thumbnailPublicId
+
+    let thumbnailLocalPath = req.file?.path
+
+    let newThumbnail;
+    if (thumbnailLocalPath) {
+        newThumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+        updatedFields.thumbnail = newThumbnail.url
+        updatedFields.thumbnailPublicId = newThumbnail.public_id
+    }
+
+    if (Object.keys(updatedFields).length === 0) {
+        throw new ApiError(400, "No valid fields provided for update");
+    }
+
+    const newVideo = await Video.findByIdAndUpdate(updateId,
+        {
+            $set: updatedFields
+        },
+        {
+            new: true
+        }
+    )
+
+    if (thumbnailLocalPath && newThumbnail) {
+        await deleteFromCloudinary(thumbnailPublicId, "image")
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        newVideo,
+        "Successfully updated the video details"
+    ))
+})
+
+const getVideoById = asyncHandler(async (req, res) => {
+    const { getVideoId } = req.params
+    
+    const video = await Video.findById(getVideoId)
+
+    if (!getVideoId) {
+        throw new ApiError(404, "Video not found")
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        video,
+        "Video fetched successfully"
+    ))
+})
+
+const togglePublishStatus = asyncHandler(async (req, res) => {
+    const { toggleVideoId } = req.params
+
+    const video = await Video.findById(toggleVideoId)
+
+    if (!video) {
+        throw new ApiError(404, "Video not found")
+    }
+
+    if (req.user?._id.toString() !== video.owner.toString()) {
+        throw new ApiError(403, "Forbidden: You do not have permission to change the status of this video.")
+    }
+
+    const newVideo = await Video.findByIdAndUpdate(toggleVideoId,
+        {
+            $set:{
+                isPublic: !video.isPublic
+            }
+        },
+        {
+            new: true
+        }
+    )
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        newVideo,
+        `Video publish status changed successfully`
+    ))
+
 })
 
 
 export {
     publishVideo,
-    deleteVideo
+    deleteVideo,
+    updateVideo,
+    getVideoById,
+    togglePublishStatus
 }

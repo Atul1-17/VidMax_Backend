@@ -309,7 +309,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         throw new ApiError(200, "Avatar url not found")
     }
 
-    const user = await User.findByIdAndUpdate(
+    const newUser = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
@@ -323,7 +323,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(
         200,
-        user,
+        newUser,
         "Avatar updated successfully"
     ))
 })

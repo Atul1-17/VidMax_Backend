@@ -30,7 +30,7 @@ const uploadOnCloudinary = async (localFilePath) => {
     }
 }
 
-const deleteFromCloudinary = async (publicId) => {
+const deleteFromCloudinary = async (publicId, resource_type) => {
     try {
         if (!publicId) {
             return null
@@ -38,13 +38,14 @@ const deleteFromCloudinary = async (publicId) => {
 
         const response = await cloudinary.uploader.destroy(
             publicId, {
-                resource_type: "auto"
+                resource_type: resource_type
             }
         )
 
         return response;
         
     } catch (error) {
+        console.log("Error while deleting file", error)
         return null;
     }
 }

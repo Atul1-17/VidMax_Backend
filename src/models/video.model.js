@@ -22,7 +22,12 @@ const videoSchema = new Schema({
         type: String, 
         required: true
     },
-    publicId: {
+    videoPublicId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    thumbnailPublicId: {
         type: String,
         required: true,
         unique: true
