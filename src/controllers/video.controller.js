@@ -2,7 +2,8 @@ import {Video} from "../models/video.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
-import uploadOnCloudinary from "../utils/cloudinary.js"
+import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
+
 
 
 const publishVideo = asyncHandler(async (req, res) => {
@@ -37,6 +38,7 @@ const publishVideo = asyncHandler(async (req, res) => {
         uploadOnCloudinary(videoFileLocalPath)
     ])
 
+
     if (!thumbnailUpload?.url) {
         throw new ApiError(400, "Thumbnail upload failed")
     }
@@ -62,6 +64,7 @@ const publishVideo = asyncHandler(async (req, res) => {
         thumbnail: thumbnailUpload.url,
         duration: (videoUpload.duration != null ? String(videoUpload.duration) : "0"),
         isPublic,
+        publicId: videoUpload.public_id,
         owner: ownerId,
     })
 
@@ -72,12 +75,40 @@ const publishVideo = asyncHandler(async (req, res) => {
     const videoWithDetails = await Video.findById(newVideo._id)
         .populate("owner", "username avatar email")
 
+
     return res
         .status(201)
         .json(new ApiResponse(201, videoWithDetails, "Video published successfully"))
 });
 
+const deleteVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+    
+    const video = await Video.findById(videoId)
+
+    if (!video) {
+        throw new ApiError(404, "Video not found")
+    }
+
+    if (!video.owner.equals(req.user?._id)) {
+        throw new ApiError(403, "Forbidden: You do not own this video")
+    }
+
+    await deleteFromCloudinary(video.publicId)
+    await Video.findByIdAndDelete(videoId)
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        "The video deleted successfully"
+    ))
+    
+
+})
+
 
 export {
-    publishVideo
+    publishVideo,
+    deleteVideo
 }

@@ -22,6 +22,11 @@ const videoSchema = new Schema({
         type: String, 
         required: true
     },
+    publicId: {
+        type: String,
+        required: true,
+        unique: true
+    },
     view: {
         type: Number,
         default: 0
