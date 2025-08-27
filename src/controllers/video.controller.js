@@ -5,7 +5,6 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 
 
-
 const publishVideo = asyncHandler(async (req, res) => {
     const { title, description } = req.body
     const isPublicInput = req.body.isPublic
@@ -124,7 +123,6 @@ const updateVideo = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Video not found")
     }
 
-
     if (req.user._id.toString() !== video.owner.toString()) {
         throw new ApiError(403, "You do not have permission to update this video")
     }
@@ -227,11 +225,69 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
 
 })
 
+const getAllVideos = asyncHandler(async (req, res) => {
+    // Your existing code to get query parameters
+    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+
+    // --- Build the base query (match stage) ---
+    const matchStage = {};
+
+    // 1. Filter by user if userId is provided
+    if (userId) {
+        matchStage.owner = new mongoose.Types.ObjectId(userId);
+    }
+
+    // 2. Filter by text query if provided
+    // Note: You must have a text index in your Video model for this to work
+    // Example in schema: videoSchema.index({ title: "text", description: "text" });
+    if (query) {
+        matchStage.$text = { $search: query };
+    }
+    
+    // 3. Ensure only published videos are returned to the public
+    matchStage.isPublic = true;
+
+
+    // --- Build the aggregation pipeline ---
+    const videoAggregation = Video.aggregate([
+        {
+            $match: matchStage
+        }
+    ]);
+
+    // --- Sorting ---
+    const sortStage = {};
+    if (sortBy && sortType) {
+        sortStage[sortBy] = sortType === 'asc' ? 1 : -1;
+        videoAggregation.sort(sortStage);
+    } else {
+        // Default sort by creation date
+        videoAggregation.sort({ createdAt: -1 });
+    }
+
+    // --- Pagination using the plugin ---
+    const options = {
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10)
+    };
+
+    const videos = await Video.aggregatePaginate(videoAggregation, options);
+
+    if (videos.docs.length === 0) {
+        return res.status(200).json(new ApiResponse(200, [], "No videos found."));
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, videos, "Videos fetched successfully"));
+});
+
 
 export {
     publishVideo,
     deleteVideo,
     updateVideo,
     getVideoById,
-    togglePublishStatus
+    togglePublishStatus,
+    getAllVideos
 }

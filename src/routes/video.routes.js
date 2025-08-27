@@ -6,7 +6,8 @@ import {
     deleteVideo,
     updateVideo,
     getVideoById,
-    togglePublishStatus
+    togglePublishStatus,
+    getAllVideos
 } from "../controllers/video.controller.js"
 
 const router = Router()
@@ -29,5 +30,6 @@ router.route("/c/:videoId").delete(verifyJWT, deleteVideo)
 router.route("/c/:updateId").patch(verifyJWT, upload.single("thumbnail"), updateVideo)
 router.route("/c/:getVideoId").get(verifyJWT, getVideoById)
 router.route("/t/:toggleVideoId").patch(verifyJWT, togglePublishStatus)
+router.route("/getAllVideos").get(getAllVideos);
 
 export default router

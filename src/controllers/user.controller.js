@@ -1,7 +1,7 @@
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {ApiError} from "../utils/ApiError.js"
 import {User} from "../models/user.model.js"
-import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
 import mongoose, { Schema } from "mongoose"
@@ -298,26 +298,36 @@ const updateAccountDetailes = asyncHandler(async (req, res) => {
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
     const avatarLocalPath = req.file?.path
-
+    const user = req.user
+    
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is missing")
     }
 
+    const oldAvatarPublicId = user.avatarPublicId
+
+    if (!oldAvatarPublicId) {
+        throw new ApiError(400, "Avatar publicId does not found")
+    }
+
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
-    if (!avatar.url) {
-        throw new ApiError(200, "Avatar url not found")
+    if (!avatar?.url) {
+        throw new ApiError(400, "Failed to upload on cloudinary")
     }
 
     const newUser = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
-                avatar: avatar.url
+                avatar: avatar.url,
+                avatarPublicId: avatar.public_id
             }
         },
         {new: true}
     ).select("-password")
+
+    await deleteFromCloudinary(oldAvatarPublicId)
 
     return res
     .status(200)

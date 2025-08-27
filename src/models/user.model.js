@@ -28,6 +28,15 @@ const userSchema = new Schema({
         type: String, // cloudnary url
         required: true
     },
+    avatarPublicId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    coverPublicId: {
+        type: String,
+        unique: true
+    },
     coverImage: {
         type: String
     },
