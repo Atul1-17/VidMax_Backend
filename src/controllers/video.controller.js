@@ -152,7 +152,8 @@ const updateVideo = asyncHandler(async (req, res) => {
     }
 
     const newVideo = await Video.findByIdAndUpdate(updateId,
-        {
+        {   
+            // update perticular document and if document is not there then create that document
             $set: updatedFields
         },
         {

@@ -4,8 +4,7 @@ import {User} from "../models/user.model.js"
 import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
-import mongoose, { Schema } from "mongoose"
-import { json } from "express"
+import mongoose from "mongoose"
 
 const generateAccessAndRefreshToken  = async (userId) => {
     try {
@@ -493,58 +492,84 @@ const addToWatchHistory = asyncHandler(async (req, res) => {
     ))
 })
 
+/**
+ * Controller to fetch the watch history of the currently logged-in user.
+ * It uses a MongoDB aggregation pipeline to efficiently gather all required data in a single database query.
+ */
 const getWatchHistory = asyncHandler(async (req, res) => {
+    // Start a MongoDB aggregation pipeline on the User collection.
+    // An aggregation pipeline is a series of stages that process documents.
     const user = await User.aggregate([
+        // Stage 1: Find the specific user document.
         {
             $match: {
-                // it directly work with the mongoDb so thats why we are using this to match the id of mongoDb
+                // We match the document by its unique _id.
+                // req.user._id is added by the authentication middleware and contains the logged-in user's ID.
+                // We must convert the string ID into a MongoDB ObjectId type for a correct match.
                 _id: new mongoose.Types.ObjectId(req.user._id)
             }
         },
+        // Stage 2: Join with the 'videos' collection to get details of watched videos.
         {
             $lookup: {
-                from: "videos",
-                localField: "watchHistory",
-                foreignField: "_id",
-                as: "watchHistory",
+                from: "videos", // The collection to join with.
+                localField: "watchHistory", // The field from the User document (contains an array of video IDs).
+                foreignField: "_id", // The field from the 'videos' collection to match against.
+                as: "watchHistory", // The name for the new array field that will contain the joined video documents.
+                
+                // A sub-pipeline to process the joined video documents further.
                 pipeline: [
+                    // Stage 2a: For each video, join with the 'users' collection to get the owner's details.
                     {
                         $lookup: {
-                            from: "users",
-                            localField: "owner",
-                            foreignField: "_id",
-                            as: "owner",
+                            from: "users", // The collection to join with.
+                            localField: "owner", // The field from the Video document (contains the owner's user ID).
+                            foreignField: "_id", // The field from the 'users' collection to match against.
+                            as: "owner", // The name for the new array field that will contain the owner's details.
+                           
+                            // Another sub-pipeline to process the owner's document.
                             pipeline: [
+                                // Stage 2aa: Select only the necessary fields from the owner's document.
+                                // This is good for security (avoids exposing sensitive data) and reduces response size.
                                 {
                                     $project: {
-                                        fullname: 1,
-                                        username: 1,
-                                        avatar: 1
+                                        fullname: 1, // Include fullname
+                                        username: 1, // Include username
+                                        avatar: 1    // Include avatar
                                     }
                                 }
                             ]
                         }
                     },
+                    // Stage 2b: De-structure the 'owner' array.
                     {
                         $addFields: {
+                            // $lookup always returns an array for the 'as' field. Since each video has only one owner,
+                            // the 'owner' field will look like: [ { owner_details } ].
+                            // This stage uses $first to take the first element of that array,
+                            // transforming it into a single object: { owner_details }.
                             owner: {
                                 $first: "$owner"
                             }
-                        }   
+                        }  
                     }
                 ]
             }
         }
-    ])
+    ]);
 
+    // Send the successful response back to the client.
     return res
     .status(200)
     .json(new ApiResponse(
         200,
+        // The result of an aggregation is always an array. Since we matched a unique _id,
+        // our user is the first (and only) element in the 'user' array.
+        // We access the populated 'watchHistory' field from that user object.
         user[0].watchHistory,
-        "watchHistory fetched successfully"
-    ))
-})
+        "Watch history fetched successfully"
+    ));
+});
 
 
 export {
