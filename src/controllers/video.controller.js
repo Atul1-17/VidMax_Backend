@@ -171,7 +171,7 @@ const updateVideo = asyncHandler(async (req, res) => {
         newVideo,
         "Successfully updated the video details"
     ))
-})
+});
 
 const getVideoById = asyncHandler(async (req, res) => {
     const { getVideoId } = req.params
@@ -189,7 +189,7 @@ const getVideoById = asyncHandler(async (req, res) => {
         video,
         "Video fetched successfully"
     ))
-})
+});
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { toggleVideoId } = req.params
@@ -223,7 +223,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
         `Video publish status changed successfully`
     ))
 
-})
+});
 
 const getAllVideos = asyncHandler(async (req, res) => {
     // Your existing code to get query parameters

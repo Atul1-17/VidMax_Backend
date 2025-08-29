@@ -5,6 +5,7 @@ import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
 import mongoose, { Schema } from "mongoose"
+import { json } from "express"
 
 const generateAccessAndRefreshToken  = async (userId) => {
     try {
@@ -453,12 +454,51 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     ))
 })
 
+const addToWatchHistory = asyncHandler(async (req, res) => {
+    const {videoId} = req.params
+
+    if (!videoId) {
+        throw new ApiError(400, "VideoId not found")
+    }
+
+    if (!req.user?._id) {
+        throw new ApiError(401, "Unauthorized request ")
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id,
+        {
+            // Use the $addToSet operator to add the videoId to the watchHistory array.
+            // $addToSet is great because it ONLY adds the ID if it's not already in the array.
+            // This prevents duplicate entries if a user re-watches a video.
+
+            $addToSet: {
+                watchHistory: videoId
+            }
+        },
+        {
+            new: true // This option tells MongoDB to return the updated user document
+        }
+    )
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+            200,
+            { watchHistory: user.watchHistory },
+            "Video added to watch history successfully"
+    ))
+})
+
 const getWatchHistory = asyncHandler(async (req, res) => {
     const user = await User.aggregate([
         {
             $match: {
                 // it directly work with the mongoDb so thats why we are using this to match the id of mongoDb
-                _id: new mongoose.Types.ObjectId.createFromHexString(req.user._id)
+                _id: new mongoose.Types.ObjectId(req.user._id)
             }
         },
         {
@@ -518,5 +558,6 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
+    addToWatchHistory,
     getWatchHistory
 }
