@@ -492,10 +492,6 @@ const addToWatchHistory = asyncHandler(async (req, res) => {
     ))
 })
 
-/**
- * Controller to fetch the watch history of the currently logged-in user.
- * It uses a MongoDB aggregation pipeline to efficiently gather all required data in a single database query.
- */
 const getWatchHistory = asyncHandler(async (req, res) => {
     // Start a MongoDB aggregation pipeline on the User collection.
     // An aggregation pipeline is a series of stages that process documents.

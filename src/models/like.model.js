@@ -1,5 +1,4 @@
 import mongoose, {Schema} from "mongoose";
-import { Video } from "./video.model";
 
 const likeSchema = new Schema({
     video: {
