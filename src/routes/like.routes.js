@@ -8,8 +8,8 @@ import {
 
 const router = Router()
 
-router.route("/toggle/:videoId").patch(verifyJWT, toggleVideoLike)
-router.route("/toggle/:commentId").patch(verifyJWT, toggleCommentLike)
+router.route("/toggle/:videoId").post(verifyJWT, toggleVideoLike)
+router.route("/toggle/:commentId").post(verifyJWT, toggleCommentLike)
 router.route("/getLikedVideos").get(verifyJWT, getLikedVideos)
 
 
