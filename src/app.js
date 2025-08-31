@@ -22,10 +22,18 @@ app.use(cookieParser())
 //routes import
 import userRouter from "./routes/user.routes.js"
 import videoRouter from "./routes/video.routes.js"
+import likeRouter from "../src/routes/like.routes.js"
+import commentRoute from "../src/routes/comment.routes.js"
+import subscriptionRoute from "../src/routes/subscription.routes.js"
+import playlistRoute from "../src/routes/playlist.routes.js"
 
 //routes declaration
 app.use("/api/v1/users", userRouter)
 app.use("/api/v1/videos", videoRouter)
+app.use("/api/v1/likes", likeRouter)
+app.use("/api/v1/comments", commentRoute)
+app.use("/api/v1/subscriptions", subscriptionRoute)
+app.use("/api/v1/playlist", playlistRoute)
 
 //it will pass the route to the userRouter and it wiill look like this http://localhost:8000/api/v1/users/register
 
