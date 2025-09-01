@@ -103,7 +103,6 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
             $addToSet: {
                 videos: videoId
             },
-            $unset
         },
         {
             new: true
@@ -132,11 +131,11 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Playlist not found")
     }
 
-    if (playlist.owner.toString() !== req.user._id) {
+    if (playlist.owner.toString() !== req.user._id.toString()) {
         throw new ApiError(403, "You do not have permission to modify this playlist")
     }
 
-    const updatedPlaylists = await Playlist.findByIdAndDelete(playlistId,
+    const updatedPlaylists = await Playlist.findByIdAndUpdate(playlistId,
         {
             $pull: {
                 videos: videoId

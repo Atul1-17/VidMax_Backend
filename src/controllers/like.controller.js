@@ -78,6 +78,7 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
         .status(201)
         .json(new ApiResponse(
             201,
+            {liked: true},
             "Comment liked successfully"
         ))
     }
@@ -85,14 +86,14 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
 })
 
 const getLikedVideos = asyncHandler(async (req, res) => {
-    const userId = req.user_id
+    const userId = req.user._id
     
     // Find all 'Like' documents for the current user where the 'video' field exists.
     // Then, populate the 'video' field to get the full video details.
     const likes = await Like.find({
         likedBy: userId,
-        video: {$exsists: true, $ne: null}
-    }).populate("Video")
+        video: {$exists: true, $ne: null} // the exists is checking that if the video is present in the document with this userId
+    }).populate("video")
 
     if (!likes || likes.length === 0) {
         return res
