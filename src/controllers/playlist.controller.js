@@ -1,4 +1,4 @@
-import mongoose, {isValidObjectId} from "mongoose"
+import {isValidObjectId} from "mongoose"
 import { Video } from "../models/video.model.js"
 import { Playlist } from "../models/playlist.model.js"
 import { ApiError } from "../utils/ApiError.js"
